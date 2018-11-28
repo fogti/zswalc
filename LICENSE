@@ -1,2 +1,3 @@
 GPL-3+
 uses libfcgi licensed under FastCGI license
+uses cgicc licensed under LGPL-3
