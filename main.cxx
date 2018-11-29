@@ -16,11 +16,11 @@ int main(void) {
       try {
         handle_request(IO, CGI);
       } catch(const exception &e) {
-        handle_error(IO, CGI, e.what(), true);
+        handle_error(IO, CGI, e.what());
       } catch(const char *e) {
-        handle_error(IO, CGI, e, true);
+        handle_error(IO, CGI, e);
       } catch(...) {
-        handle_error(IO, CGI, "unknown exception occured", true);
+        handle_error(IO, CGI, "unknown exception occured");
       }
     } catch(...) {
       // do nothing

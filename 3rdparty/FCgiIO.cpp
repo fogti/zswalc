@@ -32,11 +32,8 @@
 #include "FCgiIO.h"
 
 cgicc::FCgiIO::FCgiIO(FCGX_Request& request)
-  : std::ostream(&fOutBuf),
-	 fRequest(request), 
-	 fOutBuf(request.out), 
-	 fErrBuf(request.err), 
-	 fErr(&fErrBuf)
+  : std::ostream(&fOutBuf), fRequest(request),
+    fOutBuf(request.out), fErrBuf(request.err), fErr(&fErrBuf)
 {
   rdbuf(&fOutBuf);
   fErr.rdbuf(&fErrBuf);
@@ -52,11 +49,8 @@ cgicc::FCgiIO::FCgiIO(FCGX_Request& request)
 }
 
 cgicc::FCgiIO::FCgiIO(const FCgiIO& io)
-  : CgiInput(io),
-    std::ostream(&fOutBuf),
-	 fRequest(io.fRequest), 
-	 fErr(&fErrBuf), 
-	 fEnv(io.fEnv)
+  : CgiInput(io),  std::ostream(&fOutBuf),
+    fRequest(io.fRequest), fErr(&fErrBuf), fEnv(io.fEnv)
 {
   rdbuf(&fOutBuf);
   fErr.rdbuf(&fErrBuf);
