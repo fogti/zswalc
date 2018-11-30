@@ -47,7 +47,7 @@ void handle_request(FCgiIO &IO, Cgicc &CGI) {
 
   bool do_show = true;
   string err, user = env.getRemoteUser();
-  if(user.empty()) user = "&lt;anon&gt;";
+  if(user.empty()) user = "&lt;anon " + env.getRemoteHost() + "&gt;";
 
   {
     string subpath = env.getPathInfo();
@@ -89,23 +89,25 @@ void handle_request(FCgiIO &IO, Cgicc &CGI) {
       vector<string> content;
 
       {
-        bool found = false;
+        bool found = false, is_cur = false;
         fstream chatf;
         {
           string ct = it->getStrippedValue();
           pcrecpp::RE("[/\\.]").GlobalReplace("", &ct);
           if(!ct.empty()) {
             string ctfn = datadir + '/' + ct;
-            if(ct == "cur") ctfn = get_chat_filename(datadir, get_cur_time());
+            if(ct == "cur") {
+              is_cur = true;
+              ctfn = get_chat_filename(datadir, get_cur_time());
+            }
             chattag = get_chattag(ctfn);
             if(!chattag.empty()) {
               found = true;
               const auto ctit = CGI.getElement("t");
-              if(ctit != (*CGI).end() && ctit->getStrippedValue() == chattag) {
+              if(ctit != (*CGI).end() && ctit->getStrippedValue() == chattag)
                 status = 304;
-              } else {
+              else
                 chatf.open(ctfn.c_str(), fstream::in);
-              }
             }
           }
         }
@@ -116,19 +118,19 @@ void handle_request(FCgiIO &IO, Cgicc &CGI) {
           size_t i = 0;
           while(getline(chatf, tmp)) {
             const string tsi = to_string(i);
-            content.emplace_back("<a name=\"e" + tsi + "\">[" + tsi + "]</a> " + tmp);
+            content.emplace_back("<a name=\"e" + tsi + "\">[" + tsi + "]</a> " + tmp + "<br />\n");
             ++i;
           }
+          if(is_cur && content.size() > 25)
+            content.erase(content.begin(), content.end() - 25);
         }
       }
 
-      {
-        IO << "Status: " << status << "\r\n";
-        if(!chattag.empty()) IO << "X-ChatTag: " << chattag << "\r\n";
-        IO << "\r\n";
-        for(auto it = content.rbegin(); it != content.rend(); ++it)
-          IO << *it << "<br />\n";
-      }
+      IO << "Status: " << status << "\r\n";
+      if(!chattag.empty()) IO << "X-ChatTag: " << chattag << "\r\n";
+      IO << "\r\n";
+      for(auto cit = content.rbegin(); cit != content.rend(); ++cit)
+        IO << *cit;
     }
   }
 

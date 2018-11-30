@@ -47,11 +47,3 @@ cgicc::FCgiIO::FCgiIO(FCGX_Request& request)
     fEnv[s.substr(0, i)] = s.substr(i + 1);
   }
 }
-
-cgicc::FCgiIO::FCgiIO(const FCgiIO& io)
-  : CgiInput(io),  std::ostream(&fOutBuf),
-    fRequest(io.fRequest), fErr(&fErrBuf), fEnv(io.fEnv)
-{
-  rdbuf(&fOutBuf);
-  fErr.rdbuf(&fErrBuf);
-}

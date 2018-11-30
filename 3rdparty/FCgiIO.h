@@ -72,7 +72,6 @@ namespace cgicc {
     //@{
 
     FCgiIO(FCGX_Request& request);
-    FCgiIO(const FCgiIO& io);
 
     virtual inline ~FCgiIO() {}
     //@}
