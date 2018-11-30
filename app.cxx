@@ -47,7 +47,7 @@ void handle_request(FCgiIO &IO, Cgicc &CGI) {
 
   bool do_show = true;
   string err, user = env.getRemoteUser();
-  if(user.empty()) user = "&lt;anon " + env.getRemoteHost() + "&gt;";
+  if(user.empty()) user = "&lt;anon " + env.getRemoteAddr() + "&gt;";
 
   {
     string subpath = env.getPathInfo();
