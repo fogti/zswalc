@@ -38,6 +38,123 @@ static string get_chat_filename(const string &datadir, const struct tm &now) {
   return datadir + '/' + to_string(now.tm_year) + '_' + to_string(now.tm_mon + 1);
 }
 
+typedef decltype(Cgicc().getElement("")) TCGIit;
+
+static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const TCGIit &it) {
+  // get chat data
+  int status = 200;
+  string chattag;
+  vector<string> content;
+
+  {
+    bool found = false, is_cur = false;
+    fstream chatf;
+    {
+      chattag = it->getStrippedValue();
+      pcrecpp::RE("[/\\.]").GlobalReplace("", &chattag);
+      if(!chattag.empty()) {
+        string ctfn = datadir + '/' + chattag;
+        if(chattag == "cur") {
+          is_cur = true;
+          ctfn = get_chat_filename(datadir, get_cur_time());
+        }
+        chattag = get_chattag(ctfn);
+        if(!chattag.empty()) {
+          found = true;
+          const auto ctit = CGI.getElement("t");
+          if(ctit != (*CGI).end() && ctit->getStrippedValue() == chattag)
+            status = 304;
+          else
+            chatf.open(ctfn.c_str(), fstream::in);
+        }
+      }
+    }
+    if(!found) {
+      status = 404;
+    } else if(chatf) {
+      string tmp;
+      size_t i = 0;
+      while(getline(chatf, tmp)) {
+        const string tsi = to_string(i);
+        content.emplace_back("<a name=\"e" + tsi + "\">[" + tsi + "]</a> " + tmp + "<br />\n");
+        ++i;
+      }
+      if(is_cur && content.size() > 25)
+        content.erase(content.begin(), content.end() - 25);
+    }
+  }
+
+  IO << "Status: " << status << "\r\n";
+  if(!chattag.empty()) IO << "X-ChatTag: " << chattag << "\r\n";
+  IO << "\r\n";
+  for(auto cit = content.rbegin(); cit != content.rend(); ++cit)
+    IO << *cit;
+}
+
+static string post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const string &user, const TCGIit &it) {
+  // append to file
+  fstream chatf;
+  struct tm now = get_cur_time();
+  {
+    const string ctfn = get_chat_filename(datadir, now);
+    chatf.open(ctfn.c_str(), fstream::out | fstream::app);
+  }
+  if(!chatf) {
+    return "Chatdatei konnte nicht ge&ouml;ffnet werden";
+  } else if(!it->isEmpty()) {
+    string msg = it->getStrippedValue();
+    pcrecpp::RE("\\@([1-9][0-9]*|0)", pcrecpp::RE_Options().set_utf8(true))
+      .GlobalReplace("<a href=\"#e${1}\">${0}</a>", &msg);
+    char dtm[30];
+    strftime(dtm, 30, " (%d.%m.%Y %H:%M): ", &now);
+    chatf << user << dtm << msg << '\n';
+    if(!chatf) return "Chatdatei konnte nicht geschrieben werden";
+  }
+  return {};
+}
+
+static void render_page(FCgiIO &IO, Cgicc &CGI, const string &user, const string &err) {
+  IO << "Content-Type: text/html\r\n\r\n"
+        "<!doctype html>\n"
+        "<html>\n<head>\n"
+        "  <title>Chat</title>\n"
+        "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+        "  <script src=\"/zswebapp/zlc.js\"></script>\n";
+
+  bool is_cur = true;
+  { // WARNING: JS INJECTION
+    const auto it = CGI.getElement("show");
+    if(it != (*CGI).end()) {
+      string show_chat = it->getStrippedValue();
+      if(!show_chat.empty()) {
+        IO << "  <script>document.show_chat = '" << show_chat << "';</script>\n";
+        is_cur = (show_chat == "cur");
+      }
+    }
+  }
+
+  IO << "</head>\n"
+        "<body onload=\"loadchat()\">\n"
+        "  <h1>Chat</h1>\n";
+
+  if(is_cur) {
+    IO << "  <a href=\"..\">Hauptseite</a>\n"
+          "  <form action=\".\" method=\"POST\">\n"
+          "    " << user << ":\n"
+          "    <input type=\"text\" name=\"in\" /> <input type=\"submit\" value=\"Absenden\" />\n"
+          "  </form>\n";
+  } else {
+    IO << "  <a href=\".\">Hauptseite</a>\n";
+  }
+
+  if(!err.empty())
+    IO << "  <p style=\"color: red;\">Fehler: " << err << "</p>\n";
+
+  IO << "  <hr />\n"
+        "  <p id=\"chat\"></p>\n"
+        "</body>\n</html>\n";
+}
+
 void handle_request(FCgiIO &IO) {
   Cgicc CGI(&IO);
   auto &env = CGI.getEnvironment();
@@ -48,6 +165,7 @@ void handle_request(FCgiIO &IO) {
     return;
   }
 
+  const auto formEnd = (*CGI).end();
   string err, user = env.getRemoteUser();
   if(user.empty()) user = "&lt;anon " + env.getRemoteAddr() + "&gt;";
 
@@ -60,123 +178,25 @@ void handle_request(FCgiIO &IO) {
 
   if(env.getRequestMethod() == "POST") {
     const auto it = CGI.getElement("in");
-    if(it != (*CGI).end()) {
-      // append to file
-      fstream chatf;
-      struct tm now = get_cur_time();
-      {
-        const string ctfn = get_chat_filename(datadir, now);
-        chatf.open(ctfn.c_str(), fstream::out | fstream::app);
-      }
-      if(!chatf) {
-        err = "Chatdatei konnte nicht ge&ouml;ffnet werden";
-      } else if(!it->isEmpty()) {
-        string msg = it->getStrippedValue();
-        pcrecpp::RE("\\@([1-9][0-9]*|0)", pcrecpp::RE_Options().set_utf8(true))
-          .GlobalReplace("<a href=\"#e${1}\">${0}</a>", &msg);
-
-        char dtm[30];
-        strftime(dtm, 30, " (%d.%m.%Y %H:%M): ", &now);
-        chatf << user << dtm << msg << '\n';
-        if(!chatf) err = "Chatdatei konnte nicht geschrieben werden";
-      }
-    }
+    if(it != formEnd)
+      post_msg(IO, CGI, datadir, user, it);
   } else {
     const auto it = CGI.getElement("g");
-    if(it != (*CGI).end()) {
-      // get chat data
-      int status = 200;
-      string chattag;
-      vector<string> content;
-
-      {
-        bool found = false, is_cur = false;
-        fstream chatf;
-        {
-          string ct = it->getStrippedValue();
-          pcrecpp::RE("[/\\.]").GlobalReplace("", &ct);
-          if(!ct.empty()) {
-            string ctfn = datadir + '/' + ct;
-            if(ct == "cur") {
-              is_cur = true;
-              ctfn = get_chat_filename(datadir, get_cur_time());
-            }
-            chattag = get_chattag(ctfn);
-            if(!chattag.empty()) {
-              found = true;
-              const auto ctit = CGI.getElement("t");
-              if(ctit != (*CGI).end() && ctit->getStrippedValue() == chattag)
-                status = 304;
-              else
-                chatf.open(ctfn.c_str(), fstream::in);
-            }
-          }
-        }
-        if(!found) {
-          status = 404;
-        } else if(chatf) {
-          string tmp;
-          size_t i = 0;
-          while(getline(chatf, tmp)) {
-            const string tsi = to_string(i);
-            content.emplace_back("<a name=\"e" + tsi + "\">[" + tsi + "]</a> " + tmp + "<br />\n");
-            ++i;
-          }
-          if(is_cur && content.size() > 25)
-            content.erase(content.begin(), content.end() - 25);
-        }
-      }
-
-      IO << "Status: " << status << "\r\n";
-      if(!chattag.empty()) IO << "X-ChatTag: " << chattag << "\r\n";
-      IO << "\r\n";
-      for(auto cit = content.rbegin(); cit != content.rend(); ++cit)
-        IO << *cit;
+    if(it != formEnd) {
+      handle_get_chat(IO, CGI, datadir, it);
       return;
     }
   }
 
-  IO << "Content-Type: text/html\r\n\r\n"
-        "<!doctype html>\n"
-        "<html>\n<head>\n"
-        "  <title>Chat</title>\n"
-        "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
-        "  <script src=\"/zswebapp/zlc.js\"></script>\n";
-
-  { // WARNING: JS INJECTION
-    const auto it = CGI.getElement("show");
-    if(it != (*CGI).end()) {
-      string show_chat = it->getStrippedValue();
-      if(!show_chat.empty())
-        IO << "  <script>document.show_chat = '" << show_chat << "';</script>\n";
-    }
-  }
-
-  IO << "</head>\n"
-        "<body onload=\"loadchat()\">\n"
-        "  <h1>Chat</h1>\n"
-        "  <a href=\"..\">Hauptseite</a>\n"
-        "  <form action=\".\" method=\"POST\">\n"
-        "    " << user << ":\n"
-        "    <input type=\"text\" name=\"in\" /> <input type=\"submit\" value=\"Absenden\" />\n"
-        "  </form>\n";
-
-  if(!err.empty())
-    IO << "  <p style=\"color: red;\">Fehler: " << err << "</p>\n";
-
-  IO << "  <hr />\n"
-        "  <p id=\"chat\"></p>\n"
-        "</body>\n</html>\n";
+  render_page(IO, CGI, user, err);
 }
 
 void handle_error(FCgiIO &IO, const char *msg) {
   IO << "Content-Type: text/html\r\n\r\n"
-        "<!doctype html>\n"
-        "<html>\n"
+        "<!doctype html>\n<html>\n"
         "<head><title>ERROR occured in chat app</title></head>\n"
         "<body>\n"
         "  <h1>ERROR in chat app</h1>\n"
         "  <p>Error: " << msg << "</p>\n"
-        "</body>\n"
-        "</html>\n";
+        "</body>\n</html>\n";
 }
