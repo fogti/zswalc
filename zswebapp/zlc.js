@@ -15,7 +15,7 @@ if("Notification" in window) {
   }
 
   function handle_notif() {
-    if(!do_notif) return;
+    if(!do_notif || document.show_chat !== 'cur') return;
     if(got_msg) {
       let notif = new Notification("ZSChat Nachricht");
     }
@@ -29,7 +29,8 @@ function loadchat() {
   let xhr = new XMLHttpRequest();
   xhr.onload = function(event) {
     if(xhr.status == 304) {
-      setTimeout(loadchat, 60000);
+      if(document.show_chat === 'cur')
+        setTimeout(loadchat, 60000);
       return;
     }
     setTimeout(loadchat, 30000);

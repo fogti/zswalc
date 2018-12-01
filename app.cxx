@@ -187,18 +187,36 @@ void handle_request(FCgiIO &IO) {
         "<body onload=\"loadchat()\">\n"
         "  <h1>Chat</h1>\n";
 
+  string prev_link;
+  {
+    struct tm prev = get_cur_time();
+    size_t pos = show_chat.find('_');
+    if(pos != string::npos) {
+      prev.tm_year = stoi(show_chat.substr(0, pos));
+      prev.tm_mon  = stoi(show_chat.substr(pos + 1)) - 1;
+    }
+    if(!prev.tm_mon) {
+      prev.tm_year--;
+      prev.tm_mon = 12;
+    }
+    prev_link += " <a href=\"?show=";
+    prev_link += to_string(prev.tm_year) + '_' + to_string(prev.tm_mon);
+    prev_link += "\">[prev]</a>";
+  }
+
+  IO << "  <a href=\"https://github.com/zserik/zswalc/\">[source code]</a> ";
   if(show_chat.empty()) {
-    IO << "  <a href=\"..\">Hauptseite</a>\n"
+    IO << "<a href=\"..\">[parent]</a>" << prev_link << "\n"
           "  <form action=\".\" method=\"POST\">\n"
           "    " << user << ":\n"
           "    <input type=\"text\" name=\"in\" /> <input type=\"submit\" value=\"Absenden\" />\n"
           "  </form>\n";
   } else {
-    IO << "  <a href=\".\">Hauptseite</a>\n";
+    IO << "<a href=\".\">[parent]</a>" << prev_link << '\n';
   }
 
   if(err)
-    IO << "  <p style=\"color: red;\">Error: " << err << "</p>\n";
+    IO << "  <p style=\"color: red;\"><b>Error: " << err << "</b></p>\n";
 
   IO << "  <hr />\n"
         "  <p id=\"chat\"></p>\n"
