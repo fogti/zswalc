@@ -87,7 +87,7 @@ static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const
     IO << *cit;
 }
 
-static string post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const string &user, const TCGIit &it) {
+static auto post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const string &user, const TCGIit &it) -> const char * {
   // append to file
   mkdir(datadir.c_str(), 0750);
   fstream chatf;
@@ -96,11 +96,12 @@ static string post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const stri
     const string ctfn = get_chat_filename(datadir, now);
     chatf.open(ctfn.c_str(), fstream::out | fstream::app);
   }
-  if(!chatf) {
+  if(!chatf)
     return "Chatdatei konnte nicht ge&ouml;ffnet werden";
-  } else if(!it->isEmpty()) {
+
+  if(!it->isEmpty()) {
     string msg = it->getStrippedValue();
-    if(msg.empty()) return {};
+    if(msg.empty()) return 0;
 
     const auto opts = pcrecpp::RE_Options().set_utf8(true);
     pcrecpp::RE("<", opts).GlobalReplace("&lt;", &msg);
@@ -114,7 +115,7 @@ static string post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const stri
     chatf << user << dtm << msg << '\n';
     if(!chatf) return "Chatdatei konnte nicht geschrieben werden";
   }
-  return {};
+  return 0;
 }
 
 static bool redirect2dir(FCgiIO &IO, const CgiEnvironment &env, const map<string, string> &gvars) {
@@ -141,13 +142,14 @@ void handle_request(FCgiIO &IO) {
   const auto formEnd = (*CGI).end();
   string user = env.getRemoteUser();
   if(user.empty()) user = "&lt;anon " + env.getRemoteAddr() + "&gt;";
+  const char *err = 0;
 
   if(env.getRequestMethod() == "POST") {
     const auto it = CGI.getElement("in");
     if(it != formEnd) {
       if(redirect2dir(IO, env, {}))
         return;
-      post_msg(IO, CGI, env.getPathTranslated(), user, it);
+      err = post_msg(IO, CGI, env.getPathTranslated(), user, it);
     }
   } else {
     const auto it = CGI.getElement("g");
@@ -194,6 +196,9 @@ void handle_request(FCgiIO &IO) {
   } else {
     IO << "  <a href=\".\">Hauptseite</a>\n";
   }
+
+  if(err)
+    IO << "  <p style=\"color: red;\">Error: " << err << "</p>\n";
 
   IO << "  <hr />\n"
         "  <p id=\"chat\"></p>\n"
