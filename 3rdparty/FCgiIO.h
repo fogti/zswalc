@@ -67,57 +67,17 @@ namespace cgicc {
   class CGICC_API FCgiIO : public cgicc::CgiInput, public std::ostream {
   public:
 
-    // ============================================================
-    /*! \name Constructor and Destructor */
-    //@{
-
     FCgiIO(FCGX_Request& request);
 
-    virtual inline ~FCgiIO() {}
-    //@}
-    // ============================================================
-
-    /*! \name Data Sources */
-    //@{
-
-    /*!
-     * \brief Read data from the request's input stream.
-     *
-     * \param data The target buffer
-     * \param length The number of characters to read
-     * \return The number of characters read
-     */
     virtual inline size_t read(char *data, size_t length)
       { return FCGX_GetStr(data, length, fRequest.in); }
 
-    /*!
-     * \brief Query the value of an environment variable stored in the request.
-     *
-     * \param varName The name of an environment variable
-     * \return The value of the requested environment variable, or an empty
-     * string if not found.
-     */
     virtual inline std::string getenv(const char *varName)
       { return fEnv[varName]; }
-    //@}
-
-    // ============================================================
-
-    /*! \name Data Target Streams */
-    //@{
-
-    /*!
-     * \brief Provides access to the error stream.
-     */
-    inline std::ostream& err(void)
-      { return fErr; }
-    //@}
 
   protected:
     FCGX_Request&			fRequest;
     fcgi_streambuf			fOutBuf;
-    fcgi_streambuf			fErrBuf;
-    std::ostream			fErr;
     std::map<std::string, std::string>	fEnv;
   };
 

@@ -28,22 +28,19 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <string_view>
 
 #include "FCgiIO.h"
 
 cgicc::FCgiIO::FCgiIO(FCGX_Request& request)
-  : std::ostream(&fOutBuf), fRequest(request),
-    fOutBuf(request.out), fErrBuf(request.err), fErr(&fErrBuf)
+  : std::ostream(&fOutBuf), fRequest(request), fOutBuf(request.out)
 {
-  rdbuf(&fOutBuf);
-  fErr.rdbuf(&fErrBuf);
-
   // Parse environment
-  for(char **e = fRequest.envp; *e != NULL; ++e) {
-    std::string s(*e);
-    std::string::size_type i = s.find('=');
-    if(i == std::string::npos)
-      throw std::runtime_error("Illegally formed environment");
-    fEnv[s.substr(0, i)] = s.substr(i + 1);
+  using std::string;
+  for(char **e = fRequest.envp; *e; ++e) {
+    std::string_view s(*e);
+    auto i = s.find('=');
+    if(i != string::npos)
+      fEnv[string(s.substr(0, i))] = s.substr(i + 1);
   }
 }

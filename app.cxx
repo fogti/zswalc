@@ -18,7 +18,10 @@ using namespace cgicc;
  * POST in=...                      ---> backend: append message
  */
 
-/* TODO: refactor 'handle_request' into multiple functions and files */
+/* TODO:
+   - refactor 'handle_request' into multiple functions and files
+   - fix XSS bugs
+ */
 
 static auto get_cur_time() noexcept -> struct tm {
   time_t t = time(0);
@@ -45,7 +48,6 @@ void handle_request(FCgiIO &IO) {
     return;
   }
 
-  bool do_show = true;
   string err, user = env.getRemoteUser();
   if(user.empty()) user = "&lt;anon " + env.getRemoteAddr() + "&gt;";
 
@@ -83,7 +85,6 @@ void handle_request(FCgiIO &IO) {
     const auto it = CGI.getElement("g");
     if(it != (*CGI).end()) {
       // get chat data
-      do_show = false;
       int status = 200;
       string chattag;
       vector<string> content;
@@ -131,41 +132,41 @@ void handle_request(FCgiIO &IO) {
       IO << "\r\n";
       for(auto cit = content.rbegin(); cit != content.rend(); ++cit)
         IO << *cit;
+      return;
     }
   }
 
-  if(do_show) {
-    IO << "Content-Type: text/html\r\n\r\n"
-          "<!doctype html>\n"
-          "<html>\n<head>\n"
-          "  <title>Chat</title>\n"
-          "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
-          "  <script src=\"/zswebapp/zlc.js\"></script>\n";
+  IO << "Content-Type: text/html\r\n\r\n"
+        "<!doctype html>\n"
+        "<html>\n<head>\n"
+        "  <title>Chat</title>\n"
+        "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+        "  <script src=\"/zswebapp/zlc.js\"></script>\n";
 
-    { // WARNING: JS INJECTION
-      string show_chat;
-      const auto it = CGI.getElement("show");
-      if(it != (*CGI).end()) show_chat = it->getStrippedValue();
+  { // WARNING: JS INJECTION
+    const auto it = CGI.getElement("show");
+    if(it != (*CGI).end()) {
+      string show_chat = it->getStrippedValue();
       if(!show_chat.empty())
         IO << "  <script>document.show_chat = '" << show_chat << "';</script>\n";
     }
-
-    IO << "</head>\n"
-          "<body onload=\"loadchat()\">\n"
-          "  <h1>Chat</h1>\n"
-          "  <a href=\"..\">Hauptseite</a>\n"
-          "  <form action=\".\" method=\"POST\">\n"
-          "    " << user << ":\n"
-          "    <input type=\"text\" name=\"in\" /> <input type=\"submit\" value=\"Absenden\" />\n"
-          "  </form>\n";
-
-    if(!err.empty())
-      IO << "  <p style=\"color: red;\">Fehler: " << err << "</p>\n";
-
-    IO << "  <hr />\n"
-          "  <p id=\"chat\"></p>\n"
-          "</body>\n</html>\n";
   }
+
+  IO << "</head>\n"
+        "<body onload=\"loadchat()\">\n"
+        "  <h1>Chat</h1>\n"
+        "  <a href=\"..\">Hauptseite</a>\n"
+        "  <form action=\".\" method=\"POST\">\n"
+        "    " << user << ":\n"
+        "    <input type=\"text\" name=\"in\" /> <input type=\"submit\" value=\"Absenden\" />\n"
+        "  </form>\n";
+
+  if(!err.empty())
+    IO << "  <p style=\"color: red;\">Fehler: " << err << "</p>\n";
+
+  IO << "  <hr />\n"
+        "  <p id=\"chat\"></p>\n"
+        "</body>\n</html>\n";
 }
 
 void handle_error(FCgiIO &IO, const char *msg) {
