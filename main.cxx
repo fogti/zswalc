@@ -1,5 +1,4 @@
 #include "app.hpp"
-#include "util.hpp"
 
 using namespace std;
 
@@ -12,15 +11,15 @@ int main(void) {
   while(!FCGX_Accept_r(&request)) {
     try {
       cgicc::FCgiIO IO(request);
-      cgicc::Cgicc CGI(&IO);
       try {
+        cgicc::Cgicc CGI(&IO);
         handle_request(IO, CGI);
       } catch(const exception &e) {
-        handle_error(IO, CGI, e.what());
+        handle_error(IO, e.what());
       } catch(const char *e) {
-        handle_error(IO, CGI, e);
+        handle_error(IO, e);
       } catch(...) {
-        handle_error(IO, CGI, "unknown exception occured");
+        handle_error(IO, "unknown exception occured");
       }
     } catch(...) {
       // do nothing

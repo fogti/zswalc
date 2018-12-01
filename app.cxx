@@ -1,3 +1,5 @@
+#include "app.hpp"
+
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -5,12 +7,6 @@
 #include <fstream>
 #include <vector>
 #include <pcrecpp.h>
-
-#include "app.hpp"
-
-#include <cgicc/HTTPHTMLHeader.h>
-#include <cgicc/HTTPResponseHeader.h>
-#include <cgicc/HTMLClasses.h>
 
 using namespace std;
 using namespace cgicc;
@@ -41,7 +37,7 @@ void handle_request(FCgiIO &IO, Cgicc &CGI) {
   auto datadir = CgiInput(IO).getenv("ZSWA_DATADIR");
 
   if(datadir.empty()) {
-    handle_error(IO, CGI, "no datadir given");
+    handle_error(IO, "no datadir given");
     return;
   }
 
@@ -135,11 +131,12 @@ void handle_request(FCgiIO &IO, Cgicc &CGI) {
   }
 
   if(do_show) {
-    IO << HTTPHTMLHeader() << "<!doctype html>\n"
+    IO << "Content-Type: text/html\r\n\r\n"
+          "<!doctype html>\n"
           "<html>\n<head>\n"
           "  <title>Chat</title>\n"
           "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
-       << "  <script src=\"/zswebapp/zlc.js\"></script>\n";
+          "  <script src=\"/zswebapp/zlc.js\"></script>\n";
 
     { // WARNING: JS INJECTION
       string show_chat;
@@ -167,8 +164,9 @@ void handle_request(FCgiIO &IO, Cgicc &CGI) {
   }
 }
 
-void handle_error(FCgiIO &IO, Cgicc &CGI, const char *msg) {
-  IO << HTTPHTMLHeader() << "<!doctype html>\n"
+void handle_error(FCgiIO &IO, const char *msg) {
+  IO << "Content-Type: text/html\r\n\r\n"
+        "<!doctype html>\n"
         "<html>\n"
         "<head><title>ERROR occured in chat app</title></head>\n"
         "<body>\n"

@@ -8,5 +8,5 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(cgicc REQUIRED cgicc)
 
 include_directories(${cgicc_INCLUDE_DIRS})
-add_executable(zsfcgi app.cxx main.cxx util.cxx 3rdparty/FCgiIO.cpp)
+add_executable(zsfcgi app.cxx main.cxx 3rdparty/FCgiIO.cpp)
 target_link_libraries(zsfcgi fcgi fcgi++ ${cgicc_LIBRARIES} pcre pcrecpp)
