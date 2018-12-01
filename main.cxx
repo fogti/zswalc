@@ -1,5 +1,4 @@
 #include "app.hpp"
-
 using namespace std;
 
 int main(void) {
@@ -12,8 +11,7 @@ int main(void) {
     try {
       cgicc::FCgiIO IO(request);
       try {
-        cgicc::Cgicc CGI(&IO);
-        handle_request(IO, CGI);
+        handle_request(IO);
       } catch(const exception &e) {
         handle_error(IO, e.what());
       } catch(const char *e) {

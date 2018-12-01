@@ -7,6 +7,7 @@
 #include <fstream>
 #include <vector>
 #include <pcrecpp.h>
+#include <cgicc/Cgicc.h>
 
 using namespace std;
 using namespace cgicc;
@@ -17,7 +18,9 @@ using namespace cgicc;
  * POST in=...                      ---> backend: append message
  */
 
-static auto get_cur_time() -> struct tm {
+/* TODO: refactor 'handle_request' into multiple functions and files */
+
+static auto get_cur_time() noexcept -> struct tm {
   time_t t = time(0);
   return *localtime(&t);
 }
@@ -32,7 +35,8 @@ static string get_chat_filename(const string &datadir, const struct tm &now) {
   return datadir + '/' + to_string(now.tm_year) + '_' + to_string(now.tm_mon + 1);
 }
 
-void handle_request(FCgiIO &IO, Cgicc &CGI) {
+void handle_request(FCgiIO &IO) {
+  Cgicc CGI(&IO);
   auto &env = CGI.getEnvironment();
   auto datadir = CgiInput(IO).getenv("ZSWA_DATADIR");
 
