@@ -18,11 +18,6 @@ using namespace cgicc;
  * POST in=...                      ---> backend: append message
  */
 
-/* TODO:
-   - refactor 'handle_request' into multiple functions and files
-   - fix XSS bugs
- */
-
 static auto get_cur_time() noexcept -> struct tm {
   time_t t = time(0);
   return *localtime(&t);
@@ -103,8 +98,15 @@ static string post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const stri
     return "Chatdatei konnte nicht ge&ouml;ffnet werden";
   } else if(!it->isEmpty()) {
     string msg = it->getStrippedValue();
-    pcrecpp::RE("\\@([1-9][0-9]*|0)", pcrecpp::RE_Options().set_utf8(true))
-      .GlobalReplace("<a href=\"#e${1}\">${0}</a>", &msg);
+    if(msg.empty()) return {};
+
+    const auto opts = pcrecpp::RE_Options().set_utf8(true);
+    pcrecpp::RE("<", opts).GlobalReplace("&lt;", &msg);
+    pcrecpp::RE(">", opts).GlobalReplace("&gt;", &msg);
+    pcrecpp::RE("\\@([1-9][0-9]*|0)"                , opts).GlobalReplace("<a href=\"#e\\1\">\\0</a>", &msg);
+    pcrecpp::RE("\\[a\\b\\s*([^]]*)\\](.*?)\\[/a\\]", opts).GlobalReplace("<a \\1>\\2</a>", &msg);
+    pcrecpp::RE("\\[b\\](.*?)\\[/b\\]"              , opts).GlobalReplace("<b>\\1</b>", &msg);
+
     char dtm[30];
     strftime(dtm, 30, " (%d.%m.%Y %H:%M): ", &now);
     chatf << user << dtm << msg << '\n';
@@ -122,13 +124,14 @@ static void render_page(FCgiIO &IO, Cgicc &CGI, const string &user, const string
         "  <script src=\"/zswebapp/zlc.js\"></script>\n";
 
   bool is_cur = true;
-  { // WARNING: JS INJECTION
+  {
     const auto it = CGI.getElement("show");
     if(it != (*CGI).end()) {
       string show_chat = it->getStrippedValue();
       if(!show_chat.empty()) {
-        IO << "  <script>document.show_chat = '" << show_chat << "';</script>\n";
         is_cur = (show_chat == "cur");
+        if(show_chat.find("'") == string::npos)
+          IO << "  <script>document.show_chat = '" << show_chat << "';</script>\n";
       }
     }
   }
@@ -158,7 +161,7 @@ static void render_page(FCgiIO &IO, Cgicc &CGI, const string &user, const string
 void handle_request(FCgiIO &IO) {
   Cgicc CGI(&IO);
   auto &env = CGI.getEnvironment();
-  auto datadir = CgiInput(IO).getenv("ZSWA_DATADIR");
+  auto datadir = IO.getenv("DOCUMENT_ROOT");
 
   if(datadir.empty()) {
     handle_error(IO, "no datadir given");
