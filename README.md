@@ -22,16 +22,38 @@ ZSWA_DATADIR="/path/to/chat/files" # should be an existing directory
 ###############################################################################
 
 fastcgi.server += (
-  "/chat/" => (
+  "/chat" => (
     "localhost" => (
-      "socket"    =>  "/run/lighttpd/fastcgi-zschat-" + PID + ".socket",
-      "bin-path"  =>  "/usr/src/zswebapp-build/zsfcgi",
+      "socket"      => "/run/lighttpd/fastcgi-zschat-" + PID + ".socket",
+      "bin-path"    => "/usr/src/zswebapp-build/zsfcgi",
       "check-local" => "disable",
-      "max-procs" => 1,
+      "docroot"     => "/srv/zschat/main",
+      "max-procs"   => 1,
       "kill-signal" => 10,
-      "bin-environment" => (
-        "ZSWA_DATADIR" => "/srv/zschat/main"
-      )
+    )
+  ),
+)
+
+alias.url += (
+  "/zswebapp" => "/usr/share/zswebapp"
+)
+
+# vim: set ft=conf foldmethod=marker et :
+```
+
+## lighttpd example using spawn-fcgi
+```
+###############################################################################
+# zswebapp.conf
+# include'd by lighttpd.conf.
+###############################################################################
+
+fastcgi.server += (
+  "/chat" => (
+    "localhost" => (
+      "socket"      => "/run/lighttpd/fastcgi-zschat.socket-1",
+      "check-local" => "disable",
+      "docroot"     => "/srv/zschat/main",
     )
   ),
 )
