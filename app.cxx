@@ -80,7 +80,8 @@ static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const
     }
   }
 
-  IO << "Status: " << status << "\r\n";
+  IO << "Status: " << status << "\r\n"
+        "Content-Type: text/plain; charset=utf-8\r\n";
   if(!chattag.empty()) IO << "X-ChatTag: " << chattag << "\r\n";
   IO << "\r\n";
   for(auto cit = content.rbegin(); cit != content.rend(); ++cit)
@@ -173,7 +174,7 @@ void handle_request(FCgiIO &IO) {
       return;
   }
 
-  IO << "Content-Type: text/html\r\n\r\n"
+  IO << "Content-Type: text/html; charset=utf-8\r\n\r\n"
         "<!doctype html>\n"
         "<html>\n<head>\n"
         "  <title>Chat</title>\n"
