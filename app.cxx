@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 
 #include <fstream>
+#include <map>
 #include <vector>
 #include <pcrecpp.h>
 #include <cgicc/Cgicc.h>
@@ -88,6 +89,7 @@ static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const
 
 static string post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const string &user, const TCGIit &it) {
   // append to file
+  mkdir(datadir.c_str(), 0750);
   fstream chatf;
   struct tm now = get_cur_time();
   {
@@ -115,7 +117,60 @@ static string post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const stri
   return {};
 }
 
-static void render_page(FCgiIO &IO, Cgicc &CGI, const string &user, const string &err) {
+static bool redirect2dir(FCgiIO &IO, const CgiEnvironment &env, const map<string, string> &gvars) {
+  const string pathi = env.getPathInfo();
+  if(pathi.empty() || pathi.back() != '/' || env.getPathTranslated().empty()) {
+    // redirect to correct path
+    IO << "Status: " << (gvars.empty() ? "307" : "301")
+       << "\r\nLocation: " << env.getScriptName() << pathi << '/';
+    bool fi = true;
+    for(const auto &i : gvars) {
+      if(i.second.empty()) continue;
+      IO << (fi ? '?' : '&') << i.first << '=' << i.second;
+      fi = false;
+    }
+    IO << "\r\n\r\n";
+    return true;
+  }
+  return false;
+}
+
+void handle_request(FCgiIO &IO) {
+  Cgicc CGI(&IO);
+  auto &env = CGI.getEnvironment();
+  const auto formEnd = (*CGI).end();
+  string user = env.getRemoteUser();
+  if(user.empty()) user = "&lt;anon " + env.getRemoteAddr() + "&gt;";
+
+  if(env.getRequestMethod() == "POST") {
+    const auto it = CGI.getElement("in");
+    if(it != formEnd) {
+      if(redirect2dir(IO, env, {}))
+        return;
+      post_msg(IO, CGI, env.getPathTranslated(), user, it);
+    }
+  } else {
+    const auto it = CGI.getElement("g");
+    if(it != formEnd) {
+      if(!redirect2dir(IO, env, {{ "g", it->getStrippedValue() }}))
+        handle_get_chat(IO, CGI, env.getPathTranslated(), it);
+      return;
+    }
+  }
+
+  string show_chat;
+  {
+    const auto it = CGI.getElement("show");
+    if(it != (*CGI).end()) {
+      show_chat = it->getStrippedValue();
+      if(show_chat == "cur" || (!show_chat.empty() && show_chat.find("'") != string::npos))
+        show_chat.clear();
+    }
+
+    if(redirect2dir(IO, env, {{ "show", show_chat }}))
+      return;
+  }
+
   IO << "Content-Type: text/html\r\n\r\n"
         "<!doctype html>\n"
         "<html>\n<head>\n"
@@ -123,24 +178,14 @@ static void render_page(FCgiIO &IO, Cgicc &CGI, const string &user, const string
         "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
         "  <script src=\"/zswebapp/zlc.js\"></script>\n";
 
-  bool is_cur = true;
-  {
-    const auto it = CGI.getElement("show");
-    if(it != (*CGI).end()) {
-      string show_chat = it->getStrippedValue();
-      if(!show_chat.empty()) {
-        is_cur = (show_chat == "cur");
-        if(show_chat.find("'") == string::npos)
-          IO << "  <script>document.show_chat = '" << show_chat << "';</script>\n";
-      }
-    }
-  }
+  if(!show_chat.empty())
+    IO << "  <script>document.show_chat = '" << show_chat << "';</script>\n";
 
   IO << "</head>\n"
         "<body onload=\"loadchat()\">\n"
         "  <h1>Chat</h1>\n";
 
-  if(is_cur) {
+  if(show_chat.empty()) {
     IO << "  <a href=\"..\">Hauptseite</a>\n"
           "  <form action=\".\" method=\"POST\">\n"
           "    " << user << ":\n"
@@ -150,48 +195,9 @@ static void render_page(FCgiIO &IO, Cgicc &CGI, const string &user, const string
     IO << "  <a href=\".\">Hauptseite</a>\n";
   }
 
-  if(!err.empty())
-    IO << "  <p style=\"color: red;\">Fehler: " << err << "</p>\n";
-
   IO << "  <hr />\n"
         "  <p id=\"chat\"></p>\n"
         "</body>\n</html>\n";
-}
-
-void handle_request(FCgiIO &IO) {
-  Cgicc CGI(&IO);
-  auto &env = CGI.getEnvironment();
-  auto datadir = IO.getenv("DOCUMENT_ROOT");
-
-  if(datadir.empty()) {
-    handle_error(IO, "no datadir given");
-    return;
-  }
-
-  const auto formEnd = (*CGI).end();
-  string err, user = env.getRemoteUser();
-  if(user.empty()) user = "&lt;anon " + env.getRemoteAddr() + "&gt;";
-
-  {
-    string subpath = env.getPathInfo();
-    if(subpath == "/") subpath.clear();
-    datadir += subpath;
-    if(!subpath.empty()) mkdir(datadir.c_str(), 0750);
-  }
-
-  if(env.getRequestMethod() == "POST") {
-    const auto it = CGI.getElement("in");
-    if(it != formEnd)
-      post_msg(IO, CGI, datadir, user, it);
-  } else {
-    const auto it = CGI.getElement("g");
-    if(it != formEnd) {
-      handle_get_chat(IO, CGI, datadir, it);
-      return;
-    }
-  }
-
-  render_page(IO, CGI, user, err);
 }
 
 void handle_error(FCgiIO &IO, const char *msg) {
@@ -200,6 +206,6 @@ void handle_error(FCgiIO &IO, const char *msg) {
         "<head><title>ERROR occured in chat app</title></head>\n"
         "<body>\n"
         "  <h1>ERROR in chat app</h1>\n"
-        "  <p>Error: " << msg << "</p>\n"
+        "  <p style=\"color: red;\">Error: " << msg << "</p>\n"
         "</body>\n</html>\n";
 }
