@@ -31,7 +31,12 @@ static auto get_chattag(const string &ctfn) -> string {
 }
 
 static string get_chat_filename(const string &datadir, const struct tm &now) {
-  return datadir + '/' + to_string(now.tm_year) + '_' + to_string(now.tm_mon + 1);
+  string ret = datadir;
+  ret.reserve(ret.size() + 6);
+  ret += to_string(now.tm_year);
+  ret += '_';
+  ret += to_string(now.tm_mon + 1);
+  return ret;
 }
 
 typedef decltype(Cgicc().getElement("")) TCGIit;
@@ -49,10 +54,12 @@ static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const
       chattag = it->getStrippedValue();
       pcrecpp::RE("[/\\.]").GlobalReplace("", &chattag);
       if(!chattag.empty()) {
-        string ctfn = datadir + '/' + chattag;
+        string ctfn;
         if(chattag == "cur") {
           is_cur = true;
           ctfn = get_chat_filename(datadir, get_cur_time());
+        } else {
+          ctfn = datadir + chattag;
         }
         chattag = get_chattag(ctfn);
         if(!chattag.empty()) {
@@ -113,7 +120,7 @@ static auto post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const string
 
     char dtm[30];
     strftime(dtm, 30, " (%d.%m.%Y %H:%M): ", &now);
-    chatf << user << dtm << msg << '\n';
+    chatf << user << dtm << msg << endl;
     if(!chatf) return "Chatdatei konnte nicht geschrieben werden";
   }
   return 0;
@@ -141,22 +148,23 @@ void handle_request(FCgiIO &IO) {
   Cgicc CGI(&IO);
   auto &env = CGI.getEnvironment();
   const auto formEnd = (*CGI).end();
-  string user = env.getRemoteUser();
+  string user = env.getRemoteUser(), datadir = env.getPathTranslated();
   if(user.empty()) user = "&lt;anon " + env.getRemoteAddr() + "&gt;";
   const char *err = 0;
+  if(!datadir.empty() && datadir.back() != '/') datadir += '/';
 
   if(env.getRequestMethod() == "POST") {
     const auto it = CGI.getElement("in");
     if(it != formEnd) {
       if(redirect2dir(IO, env, {}))
         return;
-      err = post_msg(IO, CGI, env.getPathTranslated(), user, it);
+      err = post_msg(IO, CGI, datadir, user, it);
     }
   } else {
     const auto it = CGI.getElement("g");
     if(it != formEnd) {
       if(!redirect2dir(IO, env, {{ "g", it->getStrippedValue() }}))
-        handle_get_chat(IO, CGI, env.getPathTranslated(), it);
+        handle_get_chat(IO, CGI, datadir, it);
       return;
     }
   }

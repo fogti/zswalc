@@ -1,14 +1,18 @@
 #include "app.hpp"
+#include <atomic>
+#include <thread>
+#include <vector>
 using namespace std;
 
-int main(void) {
-  FCGX_Request request;
+static atomic<bool> b_do_shutdown;
 
-  FCGX_Init();
+static void worker() {
+  FCGX_Request request;
   FCGX_InitRequest(&request, 0, 0);
 
-  while(!FCGX_Accept_r(&request)) {
+  while(!b_do_shutdown && !FCGX_Accept_r(&request)) {
     try {
+      FCGX_SetExitStatus(0, request.out);
       cgicc::FCgiIO IO(request);
       try {
         handle_request(IO);
@@ -20,10 +24,35 @@ int main(void) {
         handle_error(IO, "unknown exception occured");
       }
     } catch(...) {
-      // do nothing
+      FCGX_SetExitStatus(1, request.out);
     }
     FCGX_Finish_r(&request);
   }
+
+  FCGX_Free(&request, false);
+}
+
+int main(void) {
+  FCGX_Init();
+
+  b_do_shutdown = false;
+  vector<thread> workers;
+  {
+    const size_t imax = thread::hardware_concurrency();
+    workers.reserve(imax);
+    for(size_t i = 0; i < imax; ++i)
+      workers.emplace_back(worker);
+  }
+
+  worker();
+
+  b_do_shutdown = true;
+  for(auto &i : workers)
+    i.join();
+
+  // NOTE: currently, the shutdown of zswalc is not always graceful,
+  //       often one needs to call the app one more time to
+  //       discontinue the 'accept' call
 
   return 0;
 }
