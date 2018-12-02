@@ -1,5 +1,10 @@
 #include "app.hpp"
+#include <stdlib.h>
+#include <time.h>
+
 #include <atomic>
+#include <fstream>
+#include <string>
 #include <thread>
 #include <vector>
 using namespace std;
@@ -35,6 +40,20 @@ static void worker() {
 int main(void) {
   FCGX_Init();
 
+  // 1. prevent periodic stat(/etc/localtime)
+  {
+    ifstream tzf("/etc/timezone");
+    string tmp;
+    if(tzf) tzf >> tmp;
+    if(!tmp.empty()) {
+      tmp = ':' + tmp;
+      setenv("TZ", tmp.c_str(), 0);
+    }
+  }
+  tzset();
+
+  // 2. spawn workers
+
   b_do_shutdown = false;
   vector<thread> workers;
   {
@@ -46,6 +65,7 @@ int main(void) {
 
   worker();
 
+  // 3. cleanup
   b_do_shutdown = true;
   for(auto &i : workers)
     i.join();
