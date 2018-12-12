@@ -53,7 +53,6 @@ int main(void) {
   tzset();
 
   // 2. spawn workers
-
   b_do_shutdown = false;
   vector<thread> workers;
   {

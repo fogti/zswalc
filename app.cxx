@@ -24,12 +24,6 @@ static auto get_cur_time() noexcept -> struct tm {
   return *localtime(&t);
 }
 
-static auto get_chattag(const string &ctfn) -> string {
-  struct stat st;
-  if(stat(ctfn.c_str(), &st)) return {};
-  return to_string(st.st_mtime);
-}
-
 static string get_chat_filename(const string &datadir, const struct tm &now) {
   string ret = datadir;
   ret.reserve(ret.size() + 6);
@@ -52,7 +46,7 @@ static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const
     fstream chatf;
     {
       chattag = it->getStrippedValue();
-      pcrecpp::RE("[/\\.]").GlobalReplace("", &chattag);
+      pcrecpp::RE("[/\\.]").GlobalReplace({}, &chattag);
       if(!chattag.empty()) {
         string ctfn;
         if(chattag == "cur") {
@@ -61,7 +55,11 @@ static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const
         } else {
           ctfn = datadir + chattag;
         }
-        chattag = get_chattag(ctfn);
+        { // chattag = get_chattag(ctfn);
+          struct stat st;
+          if(stat(ctfn.c_str(), &st)) chattag.clear();
+          else chattag = to_string(st.st_mtime);
+        }
         if(!chattag.empty()) {
           found = true;
           const auto ctit = CGI.getElement("t");
@@ -130,7 +128,7 @@ static bool redirect2dir(FCgiIO &IO, const CgiEnvironment &env, const map<string
   const string pathi = env.getPathInfo();
   if(pathi.empty() || pathi.back() != '/' || env.getPathTranslated().empty()) {
     // redirect to correct path
-    IO << "Status: " << (gvars.empty() ? "307" : "301")
+    IO << "Status: 30" << (gvars.empty() ? '7' : '1')
        << "\r\nLocation: " << env.getScriptName() << pathi << '/';
     bool fi = true;
     for(const auto &i : gvars) {
