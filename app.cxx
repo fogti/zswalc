@@ -229,13 +229,3 @@ void handle_request(FCgiIO &IO) {
         "  <p id=\"chat\"></p>\n"
         "</body>\n</html>\n";
 }
-
-void handle_error(FCgiIO &IO, const char *msg) {
-  IO << "Content-Type: text/html\r\n\r\n"
-        "<!doctype html>\n<html>\n"
-        "<head><title>ERROR occured in chat app</title></head>\n"
-        "<body>\n"
-        "  <h1>ERROR in chat app</h1>\n"
-        "  <p style=\"color: red;\">Error: " << msg << "</p>\n"
-        "</body>\n</html>\n";
-}

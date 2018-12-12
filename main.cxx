@@ -9,6 +9,16 @@
 #include <vector>
 using namespace std;
 
+static void handle_error(cgicc::FCgiIO &IO, const char *msg) {
+  IO << "Content-Type: text/html\r\n\r\n"
+        "<!doctype html>\n<html>\n"
+        "<head><title>ERROR occured in chat app</title></head>\n"
+        "<body>\n"
+        "  <h1>ERROR in chat app</h1>\n"
+        "  <p style=\"color: red;\">Error: " << msg << "</p>\n"
+        "</body>\n</html>\n";
+}
+
 static atomic<bool> b_do_shutdown;
 
 static void worker() {
