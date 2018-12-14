@@ -98,6 +98,7 @@ static auto post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const string
     pcrecpp::RE("\\@([1-9][0-9]*|0)"                , opts).GlobalReplace("<a href=\"#e\\1\">\\0</a>", &msg);
     pcrecpp::RE("\\[a\\b\\s*([^]]*)\\](.*?)\\[/a\\]", opts).GlobalReplace("<a \\1>\\2</a>", &msg);
     pcrecpp::RE("\\[b\\](.*?)\\[/b\\]"              , opts).GlobalReplace("<b>\\1</b>", &msg);
+    pcrecpp::RE("\\[i\\](.*?)\\[/i\\]"              , opts).GlobalReplace("<i>\\1</i>", &msg);
 
     char dtm[30];
     strftime(dtm, 30, " (%d.%m.%Y %H:%M): ", &now);
@@ -192,7 +193,7 @@ void handle_request(FCgiIO &IO) {
   }
 
   if(show_chat.empty())
-    IO << "  <form action=\".\" method=\"POST\">\n" << user <<
+    IO << "  <form action=\".\" method=\"POST\">" << user <<
           ": <input type=\"text\" name=\"in\" />"
            " <input type=\"submit\" value=\"Absenden\" /></form>\n";
 
