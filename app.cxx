@@ -4,9 +4,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <deque>
 #include <fstream>
 #include <map>
-#include <vector>
 #include <pcrecpp.h>
 #include <cgicc/Cgicc.h>
 
@@ -24,71 +24,54 @@ static auto get_cur_time() noexcept -> struct tm {
   return *localtime(&t);
 }
 
-static string get_chat_filename(const string &datadir, const struct tm &now) {
-  string ret = datadir;
-  ret.reserve(ret.size() + 6);
-  ret += to_string(now.tm_year);
-  ret += '_';
-  ret += to_string(now.tm_mon + 1);
+static string get_chat_filename(const struct tm &now) {
+  string ret;
+  ret.reserve(6);
+  ((ret  = to_string(now.tm_year))
+        += '_')
+        += to_string(now.tm_mon + 1);
   return ret;
 }
 
 typedef decltype(Cgicc().getElement("")) TCGIit;
 
 static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const TCGIit &it) {
-  // get chat data
-  int status = 200;
-  string chattag;
-  vector<string> content;
+  string chattag = it->getStrippedValue();
+  pcrecpp::RE("[/\\.]").GlobalReplace({}, &chattag);
 
-  {
-    bool found = false, is_cur = false;
-    fstream chatf;
-    {
-      chattag = it->getStrippedValue();
-      pcrecpp::RE("[/\\.]").GlobalReplace({}, &chattag);
-      if(!chattag.empty()) {
-        string ctfn;
-        if(chattag == "cur") {
-          is_cur = true;
-          ctfn = get_chat_filename(datadir, get_cur_time());
-        } else {
-          ctfn = datadir + chattag;
-        }
-        { // chattag = get_chattag(ctfn);
-          struct stat st;
-          if(stat(ctfn.c_str(), &st)) chattag.clear();
-          else chattag = to_string(st.st_mtime);
-        }
-        if(!chattag.empty()) {
-          found = true;
-          const auto ctit = CGI.getElement("t");
-          if(ctit != (*CGI).end() && ctit->getStrippedValue() == chattag)
-            status = 304;
-          else
-            chatf.open(ctfn.c_str(), fstream::in);
-        }
-      }
-    }
-    if(!found) {
-      status = 404;
-    } else if(chatf) {
-      string tmp;
-      size_t i = 0;
-      while(getline(chatf, tmp)) {
-        const string tsi = to_string(i);
-        content.emplace_back("<a name=\"e" + tsi + "\">[" + tsi + "]</a> " + tmp + "<br />\n");
-        ++i;
-      }
-      if(is_cur && content.size() > 25)
-        content.erase(content.begin(), content.end() - 25);
-    }
+  if(chattag.empty()) {
+    IO << "Status: 404\r\n\r\n";
+    return;
   }
 
+  // get chat data
+  const bool is_cur = (chattag == "cur");
+  string ctfn = datadir + (is_cur ? get_chat_filename(get_cur_time()) : chattag);
+  int status = 200;
+  struct stat st;
+  deque<string> content;
+  if(stat(ctfn.c_str(), &st)) {
+    chattag.clear();
+    status = 404;
+  } else {
+    chattag = to_string(st.st_mtime);
+    const auto ctit = CGI.getElement("t");
+    if(ctit != (*CGI).end() && ctit->getStrippedValue() == chattag)
+      status = 304;
+    else {
+      ifstream chatf(ctfn.c_str());
+      string tmp;
+      for(size_t i = 0; getline(chatf, tmp); ++i) {
+        const string tsi = to_string(i);
+        content.emplace_back("<a name=\"e" + tsi + "\">[" + tsi + "]</a> " + move(tmp) + "<br />\n");
+        if(is_cur && content.size() == 26) content.pop_front();
+      }
+    }
+    chattag = "X-ChatTag: " + move(chattag) + "\r\n";
+  }
   IO << "Status: " << status << "\r\n"
-        "Content-Type: text/plain; charset=utf-8\r\n";
-  if(!chattag.empty()) IO << "X-ChatTag: " << chattag << "\r\n";
-  IO << "\r\n";
+        "Content-Type: text/plain; charset=utf-8\r\n"
+     << chattag << "\r\n";
   for(auto cit = content.rbegin(); cit != content.rend(); ++cit)
     IO << *cit;
 }
@@ -99,7 +82,7 @@ static auto post_msg(FCgiIO &IO, Cgicc &CGI, const string &datadir, const string
   fstream chatf;
   struct tm now = get_cur_time();
   {
-    const string ctfn = get_chat_filename(datadir, now);
+    const string ctfn = datadir + get_chat_filename(now);
     chatf.open(ctfn.c_str(), fstream::out | fstream::app);
   }
   if(!chatf)
@@ -181,8 +164,7 @@ void handle_request(FCgiIO &IO) {
   }
 
   IO << "Content-Type: text/html; charset=utf-8\r\n\r\n"
-        "<!doctype html>\n"
-        "<html>\n<head>\n"
+        "<!doctype html><html><head>\n"
         "  <title>Chat</title>\n"
         "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
         "  <script src=\"/zswebapp/zlc.js\"></script>\n";
@@ -190,11 +172,11 @@ void handle_request(FCgiIO &IO) {
   if(!show_chat.empty())
     IO << "  <script>document.show_chat = '" << show_chat << "';</script>\n";
 
-  IO << "</head>\n"
-        "<body onload=\"loadchat()\">\n"
-        "  <h1>Chat</h1>\n";
+  IO << "</head><body onload=\"loadchat()\">\n"
+        "  <h1>Chat</h1>\n"
+        "  <a href=\"https://github.com/zserik/zswalc/\">[source code]</a> <a href=\"." << (show_chat.empty()?".":"")
+       << "\">[parent]</a>";
 
-  string prev_link;
   {
     struct tm prev = get_cur_time();
     size_t pos = show_chat.find('_');
@@ -206,26 +188,18 @@ void handle_request(FCgiIO &IO) {
       prev.tm_year--;
       prev.tm_mon = 12;
     }
-    prev_link += " <a href=\"?show=";
-    prev_link += to_string(prev.tm_year) + '_' + to_string(prev.tm_mon);
-    prev_link += "\">[prev]</a>";
+    IO << " <a href=\"?show=" << prev.tm_year << '_' << prev.tm_mon << "\">[prev]</a>\n";
   }
 
-  IO << "  <a href=\"https://github.com/zserik/zswalc/\">[source code]</a> ";
-  if(show_chat.empty()) {
-    IO << "<a href=\"..\">[parent]</a>" << prev_link << "\n"
-          "  <form action=\".\" method=\"POST\">\n"
-          "    " << user << ":\n"
-          "    <input type=\"text\" name=\"in\" /> <input type=\"submit\" value=\"Absenden\" />\n"
-          "  </form>\n";
-  } else {
-    IO << "<a href=\".\">[parent]</a>" << prev_link << '\n';
-  }
+  if(show_chat.empty())
+    IO << "  <form action=\".\" method=\"POST\">\n" << user <<
+          ": <input type=\"text\" name=\"in\" />"
+           " <input type=\"submit\" value=\"Absenden\" /></form>\n";
 
   if(err)
     IO << "  <p style=\"color: red;\"><b>Error: " << err << "</b></p>\n";
 
   IO << "  <hr />\n"
         "  <p id=\"chat\"></p>\n"
-        "</body>\n</html>\n";
+        "</body></html>\n";
 }
