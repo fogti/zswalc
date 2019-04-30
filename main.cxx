@@ -1,5 +1,6 @@
 #include "app.hpp"
 #include <stdlib.h>
+#include <signal.h>
 #include <time.h>
 
 #include <atomic>
@@ -20,6 +21,24 @@ static void handle_error(cgicc::FCgiIO &IO, const char *msg) {
 }
 
 static atomic<bool> b_do_shutdown;
+
+typedef void (*sighandler_t)(int);
+static void my_signal(const int nr, const sighandler_t handler) noexcept {
+  struct sigaction sig;
+  sig.sa_handler = handler;
+  sig.sa_flags   = 0;
+  sigemptyset(&sig.sa_mask);
+  sigaction(nr, &sig, 0);
+}
+
+static void shutdown_handler(int) noexcept {
+  b_do_shutdown = true;
+  my_signal(SIGINT, SIG_DFL);
+  my_signal(SIGTERM, SIG_DFL);
+
+  // the following might work, but is UB.
+  raise(SIGUSR1);
+}
 
 static void worker() {
   FCGX_Request request;
@@ -62,7 +81,11 @@ int main(void) {
   }
   tzset();
 
-  // 2. spawn workers
+  // 2. make shutdown a bit more graceful
+  my_signal(SIGINT, shutdown_handler);
+  my_signal(SIGTERM, shutdown_handler);
+
+  // 3. spawn workers
   b_do_shutdown = false;
   vector<thread> workers;
   {
@@ -74,7 +97,7 @@ int main(void) {
 
   worker();
 
-  // 3. cleanup
+  // 4. cleanup
   b_do_shutdown = true;
   for(auto &i : workers)
     i.join();
