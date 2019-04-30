@@ -33,11 +33,9 @@ static void my_signal(const int nr, const sighandler_t handler) noexcept {
 
 static void shutdown_handler(int) noexcept {
   b_do_shutdown = true;
-  my_signal(SIGINT, SIG_DFL);
+  my_signal(SIGINT, SIG_IGN);
   my_signal(SIGTERM, SIG_DFL);
-
-  // the following might work, but is UB.
-  raise(SIGUSR1);
+  my_signal(SIGUSR1, SIG_IGN);
 }
 
 static void worker() {
@@ -84,6 +82,7 @@ int main(void) {
   // 2. make shutdown a bit more graceful
   my_signal(SIGINT, shutdown_handler);
   my_signal(SIGTERM, shutdown_handler);
+  my_signal(SIGUSR1, shutdown_handler);
 
   // 3. spawn workers
   b_do_shutdown = false;
