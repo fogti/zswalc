@@ -126,6 +126,27 @@ static bool redirect2dir(FCgiIO &IO, const CgiEnvironment &env, const map<string
   return false;
 }
 
+static void decr_month(struct tm &x) noexcept {
+  if(!x.tm_mon) {
+    --x.tm_year;
+    x.tm_mon = 11;
+  } else {
+    --x.tm_mon;
+  }
+}
+
+static void incr_month(struct tm &x) noexcept {
+  ++x.tm_mon;
+  if(x.tm_mon > 11) {
+    ++x.tm_year;
+    x.tm_mon = 0;
+  }
+}
+
+static void print_nav2(FCgiIO &IO, struct tm &x, const char *desc) {
+  IO << " <a href=\"?show=" << x.tm_year << '_' << (x.tm_mon + 1) << "\">[" << desc << "]</a>";
+}
+
 void handle_request(FCgiIO &IO) {
   Cgicc CGI(&IO);
   auto &env = CGI.getEnvironment();
@@ -179,17 +200,22 @@ void handle_request(FCgiIO &IO) {
        << "\">[parent]</a>";
 
   {
+    bool pr_next = false;
     struct tm prev = get_cur_time();
     size_t pos = show_chat.find('_');
     if(pos != string::npos) {
       prev.tm_year = stoi(show_chat.substr(0, pos));
       prev.tm_mon  = stoi(show_chat.substr(pos + 1)) - 1;
+      pr_next = true;
     }
-    if(!prev.tm_mon) {
-      prev.tm_year--;
-      prev.tm_mon = 12;
+    decr_month(prev);
+    print_nav2(IO, prev, "prev");
+    if(pr_next) {
+      incr_month(prev);
+      incr_month(prev);
+      print_nav2(IO, prev, "next");
     }
-    IO << " <a href=\"?show=" << prev.tm_year << '_' << prev.tm_mon << "\">[prev]</a>\n";
+    IO << '\n';
   }
 
   if(show_chat.empty())
@@ -200,7 +226,6 @@ void handle_request(FCgiIO &IO) {
   if(err)
     IO << "  <p style=\"color: red;\"><b>Error: " << err << "</b></p>\n";
 
-  IO << "  <hr />\n"
-        "  <p id=\"chat\"></p>\n"
+  IO << "  <hr /><p id=\"chat\"></p>\n"
         "</body></html>\n";
 }
