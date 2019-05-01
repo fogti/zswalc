@@ -60,10 +60,18 @@ static void handle_get_chat(FCgiIO &IO, Cgicc &CGI, const string &datadir, const
       status = 304;
     else {
       ifstream chatf(ctfn.c_str());
-      string tmp;
-      for(size_t i = 0; getline(chatf, tmp); ++i) {
+      string line, tmp;
+      for(size_t i = 0; getline(chatf, line); ++i) {
         const string tsi = to_string(i);
-        content.emplace_back("<a name=\"e" + tsi + "\">[" + tsi + "]</a> " + move(tmp) + "<br />\n");
+        tmp.reserve(26 + 2 * tsi.size() + tmp.size());
+        tmp += "<a name=\"e";
+        tmp += tsi;
+        tmp += "\">[";
+        tmp += tsi;
+        tmp += "]</a> ";
+        tmp += line;
+        tmp += "<br />\n";
+        content.emplace_back(move(tmp));
         if(is_cur && content.size() == 26) content.pop_front();
       }
     }
