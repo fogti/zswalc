@@ -1,7 +1,10 @@
 #include "app.hpp"
+
+#include <pthread.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <atomic>
 #include <fstream>
@@ -36,13 +39,17 @@ static void shutdown_handler(int) noexcept {
   my_signal(SIGINT, SIG_IGN);
   my_signal(SIGTERM, SIG_DFL);
   my_signal(SIGUSR1, SIG_IGN);
+  close(0);
 }
 
-static void worker() {
+static void* worker(void *) {
   FCGX_Request request;
   FCGX_InitRequest(&request, 0, 0);
+  my_signal(SIGTERM, shutdown_handler);
+  my_signal(SIGUSR1, shutdown_handler);
 
-  while(!b_do_shutdown && !FCGX_Accept_r(&request)) {
+  // check shutdown flag before and after the accept call
+  while(!b_do_shutdown && !FCGX_Accept_r(&request) && !b_do_shutdown) {
     try {
       FCGX_SetExitStatus(0, request.out);
       cgicc::FCgiIO IO(request);
@@ -52,16 +59,16 @@ static void worker() {
         handle_error(IO, e.what());
       } catch(const char *e) {
         handle_error(IO, e);
-      } catch(...) {
-        handle_error(IO, "unknown exception occured");
       }
     } catch(...) {
       FCGX_SetExitStatus(1, request.out);
     }
-    FCGX_Finish_r(&request);
   }
 
+  FCGX_Finish_r(&request);
   FCGX_Free(&request, false);
+
+  return nullptr;
 }
 
 int main(void) {
@@ -86,24 +93,26 @@ int main(void) {
 
   // 3. spawn workers
   b_do_shutdown = false;
-  vector<thread> workers;
+  vector<pthread_t> workers;
   {
     const size_t imax = thread::hardware_concurrency();
     workers.reserve(imax);
-    for(size_t i = 0; i < imax; ++i)
-      workers.emplace_back(worker);
+    for(size_t i = 0; i < imax; ++i) {
+      pthread_t w_tid;
+      if(pthread_create(&w_tid, nullptr, worker, nullptr))
+        return 1;
+      workers.emplace_back(w_tid);
+    }
   }
 
-  worker();
+  worker(nullptr);
 
   // 4. cleanup
   b_do_shutdown = true;
-  for(auto &i : workers)
-    i.join();
-
-  // NOTE: currently, the shutdown of zswalc is not always graceful,
-  //       often one needs to call the app one more time to
-  //       discontinue the 'accept' call
+  for(const auto &i : workers) {
+    pthread_kill(i, SIGUSR1);
+    pthread_join(i, nullptr);
+  }
 
   return 0;
 }
