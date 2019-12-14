@@ -1,0 +1,33 @@
+{#
+  variables:
+    - prev
+    - user
+  optional variable:
+    - show_chat
+    - next
+    - err
+#}{% macro nav2(yam,desc) %}<a href="?show={{ yam }}">[{{ desc }}]</a>{% endmacro %}
+<!doctype html><html>
+<head>
+  <title>Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="/static/zlc.js"></script>
+  {% if show_chat %}
+    <script>document.show_chat = '{{ show_chat }}';</script>
+  {% endif %}
+</head>
+<body onload="loadchat()">
+  <h1>Chat</h1>
+  <a href="https://github.com/zserik/zswalc/">[source code]</a> <a href=".{% if not show_chat %}.{% endif %}">[parent]</a>
+  {{ nav2(prev, "prev") }}
+  {% if next %}{{ nav2(next, "next") }}{% endif %}
+  {% if not show_chat %}
+  <form action="." method="POST">{{ user }}: <input type="text" name="in" /><input type="submit" value="Absenden" /></form>
+  {% endif %}
+  {% if err %}
+  <p style="color: red;"><b>Error: {{ err }}</b></p>
+  {% endif %}
+  <hr />
+  <p id="chat"></p>
+</body>
+</html>
