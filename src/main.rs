@@ -290,6 +290,7 @@ fn get_chat_data(
     if upper_bound.is_some() {
         stmt += " AND id < :upb";
     }
+    stmt += " ORDER BY id DESC";
 
     let db = gda.db.get().unwrap();
     let mut stmt = db.prepare_cached(&stmt)?;
@@ -322,10 +323,16 @@ fn get_chat_data(
     })?;
 
     let mut bdat = Vec::new();
-    for i in xiter {
-        bdat.push(i?);
+    if lower_bound.is_none() && upper_bound.is_none() {
+        // only fetch the last 20 messages per default
+        for i in xiter.take(20) {
+            bdat.push(i?);
+        }
+    } else {
+        for i in xiter {
+            bdat.push(i?);
+        }
     }
-    bdat.reverse();
     let mut rb = Response::builder();
     if let Some(bs) = new_bounds {
         use {hyper::header::HeaderValue, std::convert::TryFrom};

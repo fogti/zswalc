@@ -19,6 +19,14 @@ OPTIONS:
     -r, --vroot <vroot>            sets the HTTP base path of this app (defaults to '')
 ```
 
+## TODO
+
+* HTTP authentification
+* using `REMOTE_ADDR` otherwise
+* return new messages on `POST` request
+* improve frontend
+* improve pagination
+
 ## lighttpd example
 ```
 ###############################################################################
