@@ -1,9 +1,9 @@
-{# variables: user, ?show_chat, ?err #}<!doctype html><html>
+{# variables: user, vroot, ?show_chat, ?err #}<!doctype html><html>
 <head>
   <meta charset="utf-8" />
   <title>Chat{% if show_chat %} - {{ show_chat }}{% endif %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="/static/zlc.js"></script>
+  <script src="{{ vroot }}/static/zlc.js"></script>
   {% if show_chat %}
   <script>document.show_chat = '{{ show_chat }}';</script>
   {% endif %}

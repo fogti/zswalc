@@ -202,7 +202,6 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
                 } else {
                     get_chat_page(
                         &data,
-                        real_path,
                         user,
                         params.get("show_chat").map(|i| i.as_ref()),
                     )
@@ -398,12 +397,12 @@ fn get_chat_data(
 
 fn get_chat_page(
     gda: &GlobalData,
-    _chat: &str,
     user: &str,
     show_chat: Option<&str>,
 ) -> Response<Body> {
     let mut ctx = tera::Context::new();
     ctx.insert("user", user);
+    ctx.insert("vroot", &gda.vroot);
     if let Some(x) = show_chat {
         ctx.insert("show_chat", x);
     }
