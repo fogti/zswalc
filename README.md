@@ -39,6 +39,10 @@ OPTIONS:
 
 $HTTP["url"] =~ "^/zschat($|/)" {
   proxy.server = ( "" => (( "host" => "127.0.0.1", "port" = "9003" )) )
+  proxy.forwarded = ( "for" => 1, "proto" => 1, "remote_user" => 1 )
+  proxy.header = (
+    "upgrade" => "enable"
+  )
 }
 
 # vim: set ft=conf foldmethod=marker et :
