@@ -128,8 +128,14 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
     if !real_path.starts_with(&data.vroot) {
         return Ok(if real_path == "/" {
             // forward to real root
+            let mut dst = data.vroot.clone() + "/";
+            dst += "/";
+            if let Some(query) = parts.uri.query() {
+                dst += "?";
+                dst += query;
+            }
             Response::builder()
-                .header(header::LOCATION, data.vroot.clone() + "/")
+                .header(header::LOCATION, dst)
                 .status(StatusCode::MOVED_PERMANENTLY)
                 .body(Body::from(""))
                 .unwrap()
