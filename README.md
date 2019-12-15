@@ -1,7 +1,7 @@
 # zswalc
 
 Zscheile Web Application Light Chat is an highly insecure,
-unreliable, experimental ~~ fastcgi ~~ HTTP-based chatting app,
+unreliable, experimental ~~fastcgi~~ HTTP-based chatting app,
 which utilizes javascript to update the chat view.
 
 ## License
