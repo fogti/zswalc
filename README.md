@@ -26,6 +26,7 @@ OPTIONS:
 * return new messages on `POST` request
 * improve frontend
 * improve pagination
+* fix message parsing + prevent XSS
 
 ## lighttpd example
 ```

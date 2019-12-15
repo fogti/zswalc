@@ -1,5 +1,6 @@
 {# variables: user, ?show_chat, ?err #}<!doctype html><html>
 <head>
+  <meta charset="utf-8" />
   <title>Chat{% if show_chat %} - {{ show_chat }}{% endif %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="/static/zlc.js"></script>
@@ -12,7 +13,6 @@
   <a href="https://github.com/zserik/zswalc/">[source code]</a> <a href=".{% if not show_chat %}.{% endif %}">[parent]</a>
   <a href="#" onclick="prevchat(event)">[prev]</a> <a href="#" onclick="nextchat(event)">[next]</a>
   <form onsubmit="sendchatmsg(event)">{{ user }}: <input type="text" id="in" /><input type="submit" value="Absenden" /></form>
-  {% endif %}
   {% if err %}<p style="color: red;"><b>Error: {{ err }}</b></p>{% endif %}
   <hr />
   <p id="chat"></p>

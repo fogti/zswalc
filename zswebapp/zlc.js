@@ -33,6 +33,11 @@ function is_latest_chat() {
 
 function loadchat() {
   let xhr = new XMLHttpRequest();
+  xhr.responseType = 'text';
+  let ctgp = show_chat;
+  if(is_latest_chat() && lcid_up) {
+    ctgp = 'lower_bound=' + lcid_up;
+  }
   xhr.onload = function(event) {
     if(xhr.status == 304) {
       return;
@@ -49,13 +54,13 @@ function loadchat() {
         notif_is_active = false;
       };
     }
-    lcid_up = xhr.getResponseHeader('X-LastMsgId');
-    lcid_down = xhr.getResponseHeader('X-FirstMsgId');
+    if(!lcid_up || ctgp.startsWith('lower_bound=')) {
+      lcid_up = xhr.getResponseHeader('X-LastMsgId');
+    }
+    if(!lcid_down || ctgp.startsWith('upper_bound=')) {
+      lcid_down = xhr.getResponseHeader('X-FirstMsgId');
+    }
   };
-  let ctgp = show_chat;
-  if(is_latest_chat() && lcid_up) {
-    ctgp = 'lower_bound=' + lcid_up;
-  }
   xhr.open('GET', '?'+ctgp);
   xhr.send();
 }
@@ -81,8 +86,10 @@ function sendchatmsg(event) {
   if(dat === '') {
     return;
   }
+  document.getElementById('in').value = '';
 
   let xhr = new XMLHttpRequest();
+  xhr.responseType = 'text';
   xhr.onload = function(event) {
     // log errors and warnings
     if(xhr.status < 200 || xhr.status >= 300) {
@@ -99,6 +106,10 @@ function sendchatmsg(event) {
 function initchat() {
   if(!chatelem) {
     chatelem = document.getElementById('chat');
+    if(document.show_chat) {
+      show_chat = document.show_chat;
+      document.show_chat = undefined;
+    }
   }
   if(is_latest_chat() != chat_reloader) {
     if(chat_reloader) {
@@ -109,6 +120,8 @@ function initchat() {
     }
   }
   chatelem.innerHTML = '';
+  lcid_up = undefined;
+  lcid_down = undefined;
   loadchat();
 }
 
