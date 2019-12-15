@@ -129,7 +129,7 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
         return Ok(if real_path == "/" {
             // forward to real root
             Response::builder()
-                .header("Location", data.vroot.clone() + "/")
+                .header(header::LOCATION, data.vroot.clone() + "/")
                 .status(StatusCode::MOVED_PERMANENTLY)
                 .body(Body::from(""))
                 .unwrap()
@@ -144,8 +144,18 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
         .unwrap()
         .trim_end_matches('/');
 
-    // TODO: authentification
-    let user = "<anon>";
+    let user: std::borrow::Cow<'_, str> = if let Some(x) = parts.headers.get("remote-user") {
+      x.to_str().map(|y| y.split(',').next().unwrap()).unwrap_or("<anon:?user>").into()
+    } else if let Some(x) = parts.headers.get("x-forwarded-for") {
+      let mut y = String::with_capacity(7 + x.len());
+      y += "<anon:";
+      y += x.to_str().unwrap_or("?host");
+      y += ">";
+      y.into()
+    } else {
+      "<anon>".into()
+    };
+    let user: &str = &user;
 
     match (parts.method.clone(), real_path) {
         (Method::GET, "/static/zlc.js") => {
@@ -247,6 +257,7 @@ fn chatname_to_id(gda: &GlobalData, chat: &str) -> rusqlite::Result<i64> {
         .or_else(std::convert::identity)
 }
 
+#[cold]
 fn handle_err<E: std::fmt::Debug>(x: E, ctx: &str) -> Response<Body> {
     format_error(
         StatusCode::INTERNAL_SERVER_ERROR,
@@ -258,6 +269,7 @@ fn handle_res<E: std::fmt::Debug>(x: Result<Response<Body>, E>, ctx: &str) -> Re
     x.unwrap_or_else(|e| handle_err(e, ctx))
 }
 
+#[cold]
 fn post_msg(
     gda: &GlobalData,
     chat: &str,
@@ -273,6 +285,7 @@ fn post_msg(
         Err(x) => return Ok(handle_err(x, "post_msg:from_utf8")),
     };
     let data = preprocessor::preprocess_msg(data);
+    let user = htmlescape::encode_minimal(user);
 
     gda.db.get().unwrap().execute(
         "INSERT INTO msgs (chat, user, timestamp, content) VALUES (?1, ?2, ?3, ?4)",
@@ -325,7 +338,7 @@ fn get_chat_data(
         Ok((
             id,
             format!(
-                "<a name=\"e{}\">[{}]</a>{} ({}): {}<br />\n",
+                "<a name=\"e{}\">[{}]</a> {} ({}): {}<br />\n",
                 id, id, user, tstamp, content
             ),
         ))

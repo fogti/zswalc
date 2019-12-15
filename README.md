@@ -21,8 +21,6 @@ OPTIONS:
 
 ## TODO
 
-* HTTP authentification
-* using `REMOTE_ADDR` otherwise
 * return new messages on `POST` request
 * improve frontend
 * more sophisticated XSS prevention
