@@ -171,6 +171,8 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
             .body(Body::from(""))
             .unwrap()),
 
+        (_, "/favicon.ico") => Ok(format_error(StatusCode::NOT_FOUND, "file not found")),
+
         (Method::POST, _) => {
             let entire_body = hyper::body::to_bytes(body).await?;
             Ok(handle_res(
