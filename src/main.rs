@@ -347,18 +347,19 @@ fn get_chat_data(
                 push_elem_(i?);
             }
         } else {
-            for i in xiter {
+            // only fetch the last 100 messages per default
+            for i in xiter.take(100) {
                 push_elem_(i?);
             }
         }
         let headers = rb.headers_mut().unwrap();
-        if let Some(fimid) = new_bounds.map(|bs| bs.0).or(lower_bound).or(upper_bound) {
+        if let Some(fimid) = new_bounds.map(|bs| bs.0).or_else(|| lower_bound.map(|x| x + 1)).or(upper_bound) {
             headers.insert(
                 "X-FirstMsgId",
                 HeaderValue::try_from(format!("{}", fimid)).unwrap(),
             );
         }
-        if let Some(lamid) = new_bounds.map(|bs| bs.1).or(upper_bound).or(lower_bound) {
+        if let Some(lamid) = new_bounds.map(|bs| bs.1).or_else(|| upper_bound.map(|x| x - 1)).or(lower_bound) {
             headers.insert(
                 "X-LastMsgId",
                 HeaderValue::try_from(format!("{}", lamid)).unwrap(),
