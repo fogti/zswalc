@@ -4,6 +4,11 @@ Zscheile Web Application Light Chat is an highly insecure,
 unreliable, experimental ~~ fastcgi ~~ HTTP-based chatting app,
 which utilizes javascript to update the chat view.
 
+## License
+
+The old code was released under GPL-3+, the new Rust source code
+is released under MIT+Apache-2.0.
+
 ## expected command line arguments
 ```
 USAGE:
