@@ -25,8 +25,7 @@ OPTIONS:
 * using `REMOTE_ADDR` otherwise
 * return new messages on `POST` request
 * improve frontend
-* improve pagination
-* fix message parsing + prevent XSS
+* more sophisticated XSS prevention
 
 ## lighttpd example
 ```

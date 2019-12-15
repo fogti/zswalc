@@ -17,6 +17,8 @@ struct GlobalData {
     tera: Tera,
 }
 
+mod preprocessor;
+
 #[tokio::main]
 async fn main() {
     // 0. check args
@@ -270,6 +272,7 @@ fn post_msg(
         Ok(x) => x,
         Err(x) => return Ok(handle_err(x, "post_msg:from_utf8")),
     };
+    let data = preprocessor::preprocess_msg(data);
 
     gda.db.get().unwrap().execute(
         "INSERT INTO msgs (chat, user, timestamp, content) VALUES (?1, ?2, ?3, ?4)",
@@ -353,13 +356,21 @@ fn get_chat_data(
             }
         }
         let headers = rb.headers_mut().unwrap();
-        if let Some(fimid) = new_bounds.map(|bs| bs.0).or_else(|| lower_bound.map(|x| x + 1)).or(upper_bound) {
+        if let Some(fimid) = new_bounds
+            .map(|bs| bs.0)
+            .or_else(|| lower_bound.map(|x| x + 1))
+            .or(upper_bound)
+        {
             headers.insert(
                 "X-FirstMsgId",
                 HeaderValue::try_from(format!("{}", fimid)).unwrap(),
             );
         }
-        if let Some(lamid) = new_bounds.map(|bs| bs.1).or_else(|| upper_bound.map(|x| x - 1)).or(lower_bound) {
+        if let Some(lamid) = new_bounds
+            .map(|bs| bs.1)
+            .or_else(|| upper_bound.map(|x| x - 1))
+            .or(lower_bound)
+        {
             headers.insert(
                 "X-LastMsgId",
                 HeaderValue::try_from(format!("{}", lamid)).unwrap(),
