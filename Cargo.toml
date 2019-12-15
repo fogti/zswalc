@@ -1,6 +1,6 @@
 [package]
 name = "zswalc"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Erik Zscheile <erik.zscheile@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -22,3 +22,6 @@ rusqlite = { version = "0.20" }
 tera = { version = "1.0", default-features = false }
 tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
 url = "2.1"
+
+[profile.release]
+lto = true
