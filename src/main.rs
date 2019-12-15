@@ -145,15 +145,18 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
         .trim_end_matches('/');
 
     let user: std::borrow::Cow<'_, str> = if let Some(x) = parts.headers.get("remote-user") {
-      x.to_str().map(|y| y.split(',').next().unwrap()).unwrap_or("<anon:?user>").into()
+        x.to_str()
+            .map(|y| y.split(',').next().unwrap())
+            .unwrap_or("<anon:?user>")
+            .into()
     } else if let Some(x) = parts.headers.get("x-forwarded-for") {
-      let mut y = String::with_capacity(7 + x.len());
-      y += "<anon:";
-      y += x.to_str().unwrap_or("?host");
-      y += ">";
-      y.into()
+        let mut y = String::with_capacity(7 + x.len());
+        y += "<anon:";
+        y += x.to_str().unwrap_or("?host");
+        y += ">";
+        y.into()
     } else {
-      "<anon>".into()
+        "<anon>".into()
     };
     let user: &str = &user;
 
@@ -202,11 +205,7 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
                         "get_chat_data",
                     )
                 } else {
-                    get_chat_page(
-                        &data,
-                        user,
-                        params.get("show_chat").map(|i| i.as_ref()),
-                    )
+                    get_chat_page(&data, user, params.get("show_chat").map(|i| i.as_ref()))
                 },
             )
         }
@@ -397,11 +396,7 @@ fn get_chat_data(
         .unwrap())
 }
 
-fn get_chat_page(
-    gda: &GlobalData,
-    user: &str,
-    show_chat: Option<&str>,
-) -> Response<Body> {
+fn get_chat_page(gda: &GlobalData, user: &str, show_chat: Option<&str>) -> Response<Body> {
     let mut ctx = tera::Context::new();
     ctx.insert("user", user);
     ctx.insert("vroot", &gda.vroot);
