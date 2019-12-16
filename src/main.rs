@@ -150,19 +150,36 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
         .unwrap()
         .trim_end_matches('/');
 
-    let user: std::borrow::Cow<'_, str> = if let Some(x) = parts.headers.get("remote-user") {
-        x.to_str()
-            .map(|y| y.split(',').next().unwrap())
-            .unwrap_or("<anon:?user>")
-            .into()
-    } else if let Some(x) = parts.headers.get("x-forwarded-for") {
-        let mut y = String::with_capacity(7 + x.len());
-        y += "<anon:";
-        y += x.to_str().unwrap_or("?host");
-        y += ">";
-        y.into()
-    } else {
-        "<anon>".into()
+    let user: std::borrow::Cow<'_, str> = {
+        parts
+            .headers
+            .get("forwarded")
+            .and_then(|x| x.to_str().ok())
+            .and_then(|x| {
+                let map: std::collections::HashMap<&str, &str> = x
+                    .split(';')
+                    .flat_map(|i| {
+                        let (fi, se) = preprocessor::str_split_at_while(i, |i| i != '=');
+                        if !(fi.is_empty() || se.is_empty()) {
+                            Some((fi, &se['='.len_utf8()..]))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                if let Some(u) = map.get("remote_user") {
+                    Some((*u).into())
+                } else if let Some(x) = map.get("for") {
+                    let mut y = String::with_capacity(7 + x.len());
+                    y += "<anon:";
+                    y += *x;
+                    y += ">";
+                    Some(y.into())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or("<anon>".into())
     };
     let user: &str = &user;
 

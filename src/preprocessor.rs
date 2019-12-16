@@ -38,7 +38,7 @@ pub fn preprocess_msg(mut input: &str) -> Cow<'_, str> {
 }
 
 /// 1. part while f(x) == true, then 2. part
-fn str_split_at_while(x: &str, mut f: impl FnMut(char) -> bool) -> (&str, &str) {
+pub fn str_split_at_while(x: &str, mut f: impl FnMut(char) -> bool) -> (&str, &str) {
     x.split_at(
         x.chars()
             .take_while(|i| f(*i))
