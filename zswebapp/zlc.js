@@ -46,16 +46,15 @@ function loadchat() {
       console.warn(xhr.statusText, xhr.responseText);
       return;
     }
-    if(!xhr.responseText) {
-      return;
-    }
-    chatelem.innerHTML = xhr.responseText + chatelem.innerHTML;
-    if(lcid_up && do_notif && is_latest_chat() && !notif_is_active) {
-      notif_is_active = true;
-      let notif = new Notification("ZSChat Nachricht");
-      notif.onclose = function(event) {
-        notif_is_active = false;
-      };
+    if(xhr.responseText) {
+      chatelem.innerHTML = xhr.responseText + chatelem.innerHTML;
+      if(lcid_up && do_notif && is_latest_chat() && !notif_is_active) {
+        notif_is_active = true;
+        let notif = new Notification("ZSChat Nachricht");
+        notif.onclose = function(event) {
+          notif_is_active = false;
+        };
+      }
     }
     if(!lcid_up || ctgp.startsWith('lower_bound=')) {
       lcid_up = xhr.getResponseHeader('X-LastMsgId');

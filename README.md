@@ -29,6 +29,7 @@ OPTIONS:
 * return new messages on `POST` request
 * improve frontend
 * more sophisticated XSS prevention
+* WebSockets support
 
 ## lighttpd example
 ```
