@@ -133,7 +133,7 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
             Response::builder()
                 .header(header::LOCATION, dst)
                 .status(StatusCode::MOVED_PERMANENTLY)
-                .body(Body::from(""))
+                .body(Body::empty())
                 .unwrap()
         } else {
             // invalid path
@@ -193,7 +193,7 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
         }
         (_, p) if p.starts_with("/static/") || p == "/static" => Ok(Response::builder()
             .status(StatusCode::METHOD_NOT_ALLOWED)
-            .body(Body::from(""))
+            .body(Body::empty())
             .unwrap()),
 
         (_, "/favicon.ico") => Ok(format_error(StatusCode::NOT_FOUND, "file not found")),
@@ -315,7 +315,7 @@ fn post_msg(
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(""))
+        .body(Body::empty())
         .unwrap())
 }
 
