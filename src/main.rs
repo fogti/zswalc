@@ -152,6 +152,9 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
             .get("forwarded")
             .and_then(|x| x.to_str().ok())
             .and_then(|x| {
+                // FIXME: we don't really parse this correctly here,
+                // the 'value' part of each pair might contain ';'
+                // and thus gets split at the wrong position
                 let map: std::collections::HashMap<&str, &str> = x
                     .split(';')
                     .flat_map(|i| {
@@ -164,7 +167,7 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
                     })
                     .collect();
                 if let Some(u) = map.get("remote_user") {
-                    Some((*u).into())
+                    Some((*u).trim_matches('"').into())
                 } else if let Some(x) = map.get("for") {
                     let mut y = String::with_capacity(7 + x.len());
                     y += "<anon:";
