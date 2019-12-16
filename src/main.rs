@@ -1,10 +1,10 @@
 use {
-    futures::future::FutureExt,
+    futures::{future::FutureExt, channel::mpsc},
     hyper::{header, service, Body, Method, Request, Response, StatusCode},
     indoc::indoc,
     r2d2_sqlite::SqliteConnectionManager,
     rusqlite::{params, OptionalExtension},
-    std::{collections::HashMap, net::SocketAddr, sync::Arc},
+    std::{collections::HashMap, net::SocketAddr, sync::{Arc, Mutex}},
     tera::Tera,
 };
 
@@ -12,6 +12,7 @@ struct GlobalData {
     db: r2d2::Pool<SqliteConnectionManager>,
     vroot: String,
     tera: Tera,
+    wschans: Mutex<HashMap<String, Vec<mpsc::Sender<()>>>>,
 }
 
 mod preprocessor;
