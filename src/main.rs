@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate log;
-
 use {
     futures::future::FutureExt,
     hyper::{header, service, Body, Method, Request, Response, StatusCode},
@@ -61,7 +58,6 @@ async fn main() {
     }
 
     // 2. initialize rest
-    pretty_env_logger::init();
     let serv_addr: SocketAddr = matches
         .value_of("serv–addr")
         .unwrap()
@@ -116,7 +112,7 @@ async fn main() {
     let serve_future = hyper::Server::bind(&serv_addr).serve(serv_fn);
 
     if let Err(e) = serve_future.await {
-        error!("{}", e);
+        eprintln!("ERROR: {}", e);
     }
 }
 
@@ -282,6 +278,7 @@ fn chatname_to_id(gda: &GlobalData, chat: &str) -> rusqlite::Result<i64> {
 
 #[cold]
 fn handle_err<E: std::fmt::Debug>(x: E, ctx: &str) -> Response<Body> {
+    eprintln!("ERROR: {}: {:?}", ctx, x);
     format_error(
         StatusCode::INTERNAL_SERVER_ERROR,
         &format!("{:?} in {}", x, ctx),
@@ -301,8 +298,6 @@ fn post_msg(
 ) -> rusqlite::Result<Response<Body>> {
     let chatid = chatname_to_id(gda, chat)?;
     let tstamp = format!("{}", chrono::Utc::now().format("%F %T%.3f"));
-    // FIXME: use the regex-replacement-patterns
-    // from the C++ code to prevent XSS
     let data = match std::str::from_utf8(data) {
         Ok(x) => x,
         Err(x) => return Ok(handle_err(x, "post_msg:from_utf8")),
