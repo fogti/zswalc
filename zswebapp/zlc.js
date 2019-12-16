@@ -46,6 +46,9 @@ function loadchat() {
       console.warn(xhr.statusText, xhr.responseText);
       return;
     }
+    if(!xhr.responseText) {
+      return;
+    }
     chatelem.innerHTML = xhr.responseText + chatelem.innerHTML;
     if(lcid_up && do_notif && is_latest_chat() && !notif_is_active) {
       notif_is_active = true;
