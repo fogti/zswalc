@@ -10,15 +10,17 @@ clap = "2.33"
 chrono = "0.4"
 futures = "0.3"
 htmlescape = "0.3"
+http = "0.2"
 hyper = "0.13"
 indoc = "0.3"
 lazy_static = "1.4"
-os_str_bytes = "0.2"
+os_str_bytes = "0.3"
 r2d2 = "0.8"
 r2d2_sqlite = "0.12"
 rusqlite = { version = "0.20" }
 tera = { version = "1.0", default-features = false }
-tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
+tokio = { version = "0.2", features = ["rt-core", "rt-threaded", "macros"] }
+tokio-tungstenite = "0.9"
 url = "2.1"
 
 [profile.release]

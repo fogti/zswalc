@@ -8,7 +8,7 @@ use {
     tera::Tera,
 };
 
-struct GlobalData {
+pub struct GlobalData {
     db: r2d2::Pool<SqliteConnectionManager>,
     vroot: String,
     tera: Tera,
@@ -16,6 +16,7 @@ struct GlobalData {
 }
 
 mod preprocessor;
+mod ws;
 
 #[tokio::main]
 async fn main() {
@@ -80,6 +81,7 @@ async fn main() {
             .expect("failed to load templates");
             tera
         },
+        wschans: Mutex::new(HashMap::new()),
     });
 
     gld.db
@@ -118,7 +120,7 @@ async fn main() {
 }
 
 async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Body>, hyper::Error> {
-    let (parts, body) = req.into_parts();
+    let (parts, mut body) = req.into_parts();
 
     // check path
     let mut real_path = parts.uri.path();
@@ -182,6 +184,10 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
             .unwrap_or("<anon>".into())
     };
     let user: &str = &user;
+
+    if let Some(x) = ws::try_serv_upgrade(&data, &parts, &mut body, user).await {
+        return Ok(x);
+    }
 
     match (parts.method.clone(), real_path) {
         (Method::GET, "/static/zlc.js") => {
