@@ -13,10 +13,10 @@ htmlescape = "0.3"
 hyper = "0.13"
 indoc = "0.3"
 lazy_static = "1.4"
-os_str_bytes = "0.2"
+os_str_bytes = "1.0"
 r2d2 = "0.8"
-r2d2_sqlite = "0.12"
-rusqlite = { version = "0.20" }
+r2d2_sqlite = "0.14"
+rusqlite = "0.21"
 tera = { version = "1.0", default-features = false }
 tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
 url = "2.1"
