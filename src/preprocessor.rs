@@ -75,7 +75,7 @@ fn parse_element(input: &str) -> NPResult<'_> {
             } else {
                 None
             }
-            .unwrap_or(htmlescape::encode_minimal(fi)),
+            .unwrap_or_else(|| htmlescape::encode_minimal(fi)),
             rest: se,
         }
     } else {

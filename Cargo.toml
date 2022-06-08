@@ -2,24 +2,35 @@
 name = "zswalc"
 version = "0.1.0"
 authors = ["Erik Zscheile <erik.zscheile@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-clap = "2.33"
 chrono = "0.4"
 futures = "0.3"
 htmlescape = "0.3"
-hyper = "0.13"
 indoc = "0.3"
 lazy_static = "1.4"
-os_str_bytes = "1.0"
 r2d2 = "0.8"
-r2d2_sqlite = "0.14"
-rusqlite = "0.21"
-tera = { version = "1.0", default-features = false }
-tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
-url = "2.1"
+r2d2_sqlite = "0.20"
+rusqlite = "0.27"
+url = "2.2"
+
+[dependencies.clap]
+version = "3.1"
+features = ["derive"]
+
+[dependencies.hyper]
+version = "0.14"
+features = ["http1", "http2", "server", "tcp"]
+
+[dependencies.tera]
+version = "1.0"
+default-features = false
+
+[dependencies.tokio]
+version = "1.19"
+features = ["rt", "rt-multi-thread", "macros"]
 
 [profile.release]
 lto = true

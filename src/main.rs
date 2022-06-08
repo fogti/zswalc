@@ -16,60 +16,42 @@ struct GlobalData {
 
 mod preprocessor;
 
+/// Zscheile Web Application Light Chat is an experimental chatting app
+#[derive(clap::Parser, Debug)]
+struct Args {
+    /// sets the file where to store the chat data
+    #[clap(short = 'b', long)]
+    database: String,
+
+    /// sets the server address to bind+listen to
+    #[clap(short = 'a', long)]
+    serv_addr: SocketAddr,
+
+    /// sets the HTTP base path of this app (defaults to '')
+    #[clap(short = 'r', long, default_value_t = String::new())]
+    vroot: String,
+}
+
 #[tokio::main]
 async fn main() {
     // 0. check args
-    use clap::Arg;
-    let matches = clap::App::new("zswalc")
-        .version(clap::crate_version!())
-        .author("Erik Zscheile <erik.zscheile@gmail.com>")
-        .about("Zscheile Web Application Light Chat is an experimental chatting app")
-        .arg(
-            Arg::with_name("database")
-                .short("b")
-                .long("database")
-                .takes_value(true)
-                .required(true)
-                .help("sets the file where to store the chat data"),
-        )
-        .arg(
-            Arg::with_name("serv–addr")
-                .short("a")
-                .long("serv-addr")
-                .takes_value(true)
-                .required(true)
-                .help("sets the server address to bind/listen to"),
-        )
-        .arg(
-            Arg::with_name("vroot")
-                .short("r")
-                .long("vroot")
-                .takes_value(true)
-                .help("sets the HTTP base path of this app (defaults to '')"),
-        )
-        .get_matches();
+    let Args {
+        database,
+        serv_addr,
+        vroot,
+    } = <Args as clap::Parser>::parse();
 
-    // 1. prevent periodic stat(/etc/localtime)
-    {
-        let timezone = std::fs::read("/etc/timezone").expect("unable to read timezone file");
-        let encoded =
-            os_str_bytes::OsStrBytes::from_bytes(&timezone[..]).expect("got invalid timezone data");
-        std::env::set_var("TZ", encoded);
+    // 1. prevent periodic stat(/etc/localtime) in simple cases
+    if let Ok(timezone) = std::fs::read("/etc/timezone") {
+        let timezone = String::from_utf8(timezone).expect("got invalid timezone data");
+        std::env::set_var("TZ", timezone);
     }
 
     // 2. initialize rest
-    let serv_addr: SocketAddr = matches
-        .value_of("serv–addr")
-        .unwrap()
-        .parse()
-        .expect("got invalid server address");
-
     let gld = Arc::new(GlobalData {
-        db: r2d2::Pool::new(SqliteConnectionManager::file(
-            matches.value_of("database").unwrap().to_string(),
-        ))
-        .expect("unable to open database"),
-        vroot: matches.value_of("vroot").unwrap_or("").to_string(),
+        db: r2d2::Pool::new(SqliteConnectionManager::file(database))
+            .expect("unable to open database"),
+        vroot,
         tera: {
             let mut tera = Tera::default();
             tera.add_raw_templates(vec![(
@@ -178,7 +160,7 @@ async fn router(req: Request<Body>, data: Arc<GlobalData>) -> Result<Response<Bo
                     None
                 }
             })
-            .unwrap_or("<anon>".into())
+            .unwrap_or_else(|| "<anon>".into())
     };
     let user: &str = &user;
 
@@ -351,7 +333,7 @@ fn get_chat_data(
     if let Some(upb) = upper_bound.as_ref() {
         pars.push((":upb", upb as &dyn ToSql));
     }
-    let xiter = stmt.query_map_named(&pars[..], |row| {
+    let xiter = stmt.query_map(&pars[..], |row| {
         let id: i64 = row.get(0)?;
         let user: String = row.get(1)?;
         let tstamp: String = row.get(2)?;
@@ -368,7 +350,7 @@ fn get_chat_data(
     let mut new_bounds: Option<(i64, i64)> = None;
     let mut bdat = Vec::new();
     let mut rb = Response::builder();
-    use {hyper::header::HeaderValue, std::convert::TryFrom};
+    use hyper::header::HeaderValue;
     {
         let mut push_elem_ = |(id, i)| {
             // calculate new bounds
@@ -429,8 +411,7 @@ fn get_chat_page(gda: &GlobalData, user: &str, show_chat: Option<&str>) -> Respo
         .body(Body::from(
             gda.tera
                 .render("pagetemplate.html", &ctx)
-                .expect("tera render failed")
-                .to_string(),
+                .expect("tera render failed"),
         ))
         .unwrap()
 }
